@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi cocina · 21 días</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Special+Elite&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F3ECDB;
+    --card:#FBF6EC;
+    --ink:#2B2117;
+    --ink-soft:rgba(43,33,23,.55);
+    --stamp:#3F6B4F;
+    --stamp-soft:#DCE9DE;
+    --tag:#C1502E;
+    --line:#C9BCA0;
+    --display:'Anton','Arial Narrow',sans-serif;
+    --body-f:'Special Elite','Courier New',monospace;
+    --util:'Inter',system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--util);
+    padding:22px 14px 60px;
+    -webkit-tap-highlight-color:transparent;
+  }
+  *:focus-visible{outline:3px solid var(--tag); outline-offset:2px;}
+  .app{max-width:480px;margin:0 auto;}
+
+  /* ---------- topbar ---------- */
+  .eyebrow{
+    text-align:center;font-family:var(--util);font-weight:700;font-size:11px;
+    letter-spacing:.18em;color:var(--ink-soft);text-transform:uppercase;margin-bottom:10px;
+  }
+  .tabs{display:flex;gap:6px;margin-bottom:18px;}
+  .tab-btn{
+    flex:1;padding:11px 6px;border-radius:999px;border:2px solid var(--ink);
+    background:transparent;font-family:var(--util);font-weight:600;font-size:12.5px;
+    color:var(--ink);cursor:pointer;transition:background .2s,color .2s;
+  }
+  .tab-btn.active{background:var(--ink);color:var(--card);}
+
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* ---------- receipt ---------- */
+  .receipt{
+    position:relative;background:var(--card);padding:30px 22px 26px;
+    border-radius:3px;box-shadow:0 10px 30px rgba(0,0,0,.10);
+  }
+  .receipt::before,.receipt::after{
+    content:"";position:absolute;left:0;right:0;height:13px;
+    background-image:linear-gradient(135deg,var(--card) 50%,transparent 50%),
+                      linear-gradient(45deg,var(--card) 50%,transparent 50%);
+    background-size:16px 16px;background-position:0 0,8px 0;
+  }
+  .receipt::before{top:-12px;transform:rotate(180deg);}
+  .receipt::after{bottom:-12px;}
+
+  .receipt-title{
+    font-family:var(--display);font-size:clamp(24px,7vw,32px);text-align:center;
+    letter-spacing:.02em;margin:2px 0 4px;
+  }
+  .receipt-sub{
+    text-align:center;font-family:var(--util);font-size:12.5px;color:var(--ink-soft);
+    margin:0 0 6px;
+  }
+  .receipt-meta{
+    text-align:center;font-family:var(--body-f);font-size:11px;color:var(--ink-soft);
+    margin:0 0 14px;
+  }
+  .hr-dash{border:none;border-top:1px dashed var(--line);margin:0 0 16px;}
+
+  .cat-block{margin-bottom:6px;}
+  .cat-label{
+    font-family:var(--util);font-weight:700;font-size:11.5px;letter-spacing:.1em;
+    color:var(--stamp);text-transform:uppercase;margin:20px 0 6px;
+  }
+  .cat-block:first-of-type .cat-label{margin-top:0;}
+
+  .item-row{
+    display:flex;align-items:baseline;gap:8px;padding:7px 10px;margin:0 -10px;
+    border-radius:4px;background:transparent;transition:background .2s;
+  }
+  .item-row.is-done{background:var(--stamp-soft);}
+  .item-name{
+    font-family:var(--body-f);font-size:13.5px;line-height:1.3;flex:0 1 auto;
+  }
+  .item-row.is-done .item-name,.item-row.is-done .item-qty{
+    text-decoration:line-through;opacity:.5;
+  }
+  .item-leader{flex:1 1 auto;min-width:10px;border-bottom:2px dotted var(--line);transform:translateY(-4px);}
+  .item-qty{
+    font-family:var(--body-f);font-size:11.5px;color:var(--ink-soft);white-space:nowrap;flex:0 0 auto;
+  }
+  .stamp-btn{
+    flex:0 0 auto;width:32px;height:32px;border-radius:50%;
+    border:2px solid rgba(43,33,23,.32);background:transparent;cursor:pointer;
+    display:grid;place-items:center;transition:border-color .2s,background .2s;
+    padding:0;
+  }
+  .stamp-btn.is-done{border-color:var(--stamp);background:#fff;}
+  .stamp-btn .mark{
+    font-family:var(--display);font-size:15px;color:var(--stamp);
+    opacity:0;transform:scale(.5) rotate(-18deg);
+    transition:opacity .18s ease,transform .18s cubic-bezier(.34,1.56,.64,1);
+  }
+  .stamp-btn.is-done .mark{opacity:1;transform:scale(1) rotate(-10deg);}
+  @media (prefers-reduced-motion:no-preference){
+    @keyframes stampPop{
+      0%{transform:scale(1);}
+      35%{transform:scale(1.22) rotate(-6deg);}
+      65%{transform:scale(.93) rotate(2deg);}
+      100%{transform:scale(1) rotate(0);}
+    }
+    .stamp-btn.pop{animation:stampPop .3s ease;}
+  }
+
+  .barcode-wrap{margin:22px 0 4px;}
+  .barcode{
+    position:relative;height:30px;border-radius:2px;overflow:hidden;
+    background-image:repeating-linear-gradient(90deg,var(--ink) 0 2px,transparent 2px 4px,
+                      var(--ink) 4px 5px,transparent 5px 9px,var(--ink) 9px 12px,transparent 12px 16px);
+    opacity:.88;
+  }
+  .barcode-fill{position:absolute;inset:0;width:0%;background:var(--stamp);transition:width .4s ease;}
+  .total-row{
+    display:flex;justify-content:space-between;align-items:baseline;
+    font-family:var(--display);letter-spacing:.03em;font-size:14px;margin-top:9px;
+  }
+
+  .btn-primary{
+    width:100%;margin-top:22px;padding:14px;border:none;border-radius:4px;
+    background:var(--ink);color:var(--card);font-family:var(--display);
+    font-size:14.5px;letter-spacing:.03em;cursor:pointer;transition:background .2s,transform .15s;
+  }
+  .btn-primary:hover{background:var(--stamp);}
+  .btn-primary:active{transform:scale(.98);}
+  .reset-link{
+    display:block;margin:14px auto 0;background:none;border:none;cursor:pointer;
+    font-family:var(--util);font-size:11.5px;color:var(--ink-soft);text-decoration:underline;
+  }
+
+  /* ---------- plan: locked ---------- */
+  .locked-card{
+    background:var(--card);border-radius:6px;padding:38px 26px;text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.08);
+  }
+  .seal{
+    width:118px;height:118px;border-radius:50%;border:3px dashed var(--tag);
+    display:grid;place-items:center;margin:0 auto 18px;transform:rotate(-8deg);
+    font-family:var(--display);color:var(--tag);font-size:13px;letter-spacing:.04em;
+    line-height:1.3;padding:8px;
+  }
+  .locked-text{font-family:var(--util);font-size:14px;line-height:1.5;margin:0 0 18px;}
+  .mini-progress{height:8px;border-radius:999px;background:rgba(43,33,23,.12);overflow:hidden;margin-bottom:22px;}
+  .mini-progress-fill{height:100%;width:0%;background:var(--stamp);transition:width .4s ease;}
+  .btn-secondary{
+    padding:11px 20px;border-radius:999px;border:2px solid var(--ink);background:transparent;
+    font-family:var(--util);font-weight:600;font-size:13px;color:var(--ink);cursor:pointer;
+  }
+  .btn-secondary:hover{background:var(--ink);color:var(--card);}
+
+  /* ---------- plan: unlocked ---------- */
+  .celebration{
+    overflow:hidden;max-height:0;opacity:0;margin-bottom:0;
+    transition:max-height .5s ease,opacity .4s ease,margin .5s ease;
+    display:flex;justify-content:center;
+  }
+  .celebration.show{max-height:140px;opacity:1;margin-bottom:18px;}
+  .celebration.hide{opacity:0;}
+  .big-stamp{
+    border:3px solid var(--stamp);color:var(--stamp);border-radius:8px;
+    padding:16px 14px;transform:rotate(-6deg);text-align:center;
+    font-family:var(--display);font-size:clamp(17px,5.5vw,22px);letter-spacing:.02em;
+  }
+
+  .week-block{margin-bottom:14px;}
+  .week-label{
+    font-family:var(--util);font-weight:700;font-size:11px;letter-spacing:.1em;
+    color:var(--ink-soft);text-transform:uppercase;margin-bottom:7px;
+  }
+  .day-chip-row{display:flex;gap:7px;flex-wrap:wrap;}
+  .day-chip{
+    width:34px;height:34px;border-radius:50%;border:2px solid var(--line);background:var(--card);
+    font-family:var(--display);font-size:13px;color:var(--ink);display:grid;place-items:center;
+    cursor:pointer;transition:background .2s,border-color .2s,color .2s;
+  }
+  .day-chip:hover{border-color:var(--stamp);}
+  .day-chip.active{background:var(--stamp);border-color:var(--stamp);color:#fff;}
+
+  .day-card{
+    position:relative;background:var(--card);border-radius:5px;margin-top:18px;
+    padding:22px 20px 22px 32px;box-shadow:0 8px 24px rgba(0,0,0,.10);
+  }
+  .day-card::before{content:"";position:absolute;left:17px;top:18px;bottom:18px;width:2px;background:var(--tag);opacity:.55;}
+  .day-card-head{
+    display:flex;justify-content:space-between;align-items:baseline;
+    margin-bottom:14px;padding-bottom:10px;border-bottom:1px dashed var(--line);
+  }
+  .day-card-num{font-family:var(--display);font-size:21px;letter-spacing:.02em;}
+  .day-card-week{font-family:var(--util);font-size:11px;letter-spacing:.08em;color:var(--ink-soft);text-transform:uppercase;}
+  .meal-row{margin-bottom:13px;}
+  .meal-row:last-child{margin-bottom:0;}
+  .meal-label{
+    font-family:var(--body-f);font-size:11px;letter-spacing:.06em;color:var(--stamp);
+    text-transform:uppercase;margin-bottom:3px;
+  }
+  .meal-text{font-family:var(--util);font-size:14px;line-height:1.45;}
+
+  .day-nav{display:flex;justify-content:space-between;margin-top:16px;}
+  .nav-btn{
+    padding:10px 16px;border-radius:999px;border:2px solid var(--ink);background:transparent;
+    font-family:var(--util);font-weight:600;font-size:13px;color:var(--ink);cursor:pointer;
+  }
+  .nav-btn:hover{background:var(--ink);color:var(--card);}
+  .nav-btn:disabled{opacity:.35;cursor:default;}
+  .nav-btn:disabled:hover{background:transparent;color:var(--ink);}
+
+  .loading-msg{font-family:var(--util);font-size:13px;color:var(--ink-soft);text-align:center;padding:20px 0;}
+
+  @media (max-width:380px){
+    .receipt{padding:24px 16px 22px;}
+    .item-name{font-size:12.5px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="eyebrow">Tu cocina · 21 días</div>
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="lista" type="button">Lista de compras</button>
+    <button class="tab-btn" data-tab="plan" type="button">Plan de 21 días</button>
+  </nav>
+
+  <main>
+    <section id="view-lista" class="view active">
+      <div class="receipt">
+        <h1 class="receipt-title">LISTA DE&nbsp;COMPRAS</h1>
+        <p class="receipt-sub">Marca cada producto cuando lo tengas en tu bolsa</p>
+        <p class="receipt-sub" style="font-weight:700;color:var(--stamp);font-size:11px;letter-spacing:.06em;">SIN LÁCTEOS · SIN HARINAS · SIN AZÚCAR · SIN ARROZ</p>
+        <p class="receipt-meta">43 PRODUCTOS &middot; 3 SEMANAS &middot; 1 PERSONA</p>
+        <hr class="hr-dash">
+
+        <div id="receipt-body">
+          <p class="loading-msg">Cargando tu lista…</p>
+        </div>
+
+        <div class="barcode-wrap">
+          <div class="barcode"><div class="barcode-fill" id="barcode-fill"></div></div>
+          <div class="total-row">
+            <span>TOTAL COMPRADO</span>
+            <span id="progress-text">0 / 43</span>
+          </div>
+        </div>
+
+        <button class="btn-primary" id="go-to-plan" type="button">Ver mi plan de 21 días →</button>
+        <button class="reset-link" id="reset-btn" type="button">Reiniciar lista</button>
+      </div>
+    </section>
+
+    <section id="view-plan" class="view">
+      <div id="plan-locked" class="locked-card">
+        <div class="seal">AÚN<br>PENDIENTE</div>
+        <p class="locked-text">Te faltan <strong id="locked-count">43</strong> productos para desbloquear tu plan de comidas.</p>
+        <div class="mini-progress"><div class="mini-progress-fill" id="mini-fill"></div></div>
+        <button class="btn-secondary" id="back-to-list" type="button">Volver a la lista</button>
+      </div>
+
+      <div id="plan-unlocked" hidden>
+        <div class="celebration" id="celebration" hidden>
+          <div class="big-stamp">¡LISTO<br>PARA COCINAR!</div>
+        </div>
+
+        <div id="weeks"></div>
+
+        <div class="day-card">
+          <div class="day-card-head">
+            <span class="day-card-num" id="day-num">DÍA 1</span>
+            <span class="day-card-week" id="day-week">SEMANA 1</span>
+          </div>
+          <div id="meal-rows"></div>
+        </div>
+
+        <div class="day-nav">
+          <button class="nav-btn" id="prev-day" type="button">‹ Anterior</button>
+          <button class="nav-btn" id="next-day" type="button">Siguiente ›</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const CHECK_KEY = 'shopping-checklist-21d';
+const CELEB_KEY = 'plan-celebration-shown';
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const ingredientsData = [
+  {id:'pollo',cat:'Proteínas',name:'Pechuga de pollo',qty:'2 kg aprox.'},
+  {id:'pescado',cat:'Proteínas',name:'Pescado (bonito, jurel o similar)',qty:'1.5 kg aprox.'},
+  {id:'atun',cat:'Proteínas',name:'Atún en agua',qty:'4 a 5 latas (170 g c/u)'},
+  {id:'pavita',cat:'Proteínas',name:'Pavita',qty:'500 g aprox.'},
+  {id:'huevos',cat:'Proteínas',name:'Huevos',qty:'2.5 a 3 docenas'},
+  {id:'lentejas',cat:'Proteínas',name:'Lentejas secas',qty:'1 bolsa de 500 g'},
+  {id:'garbanzos',cat:'Proteínas',name:'Garbanzos',qty:'2 latas (400 g c/u) o 500 g secos'},
+
+  {id:'quinua',cat:'Carbohidratos',name:'Quinua',qty:'1 bolsa de 700-800 g'},
+  {id:'camote',cat:'Carbohidratos',name:'Camote',qty:'2 a 3 unidades medianas'},
+  {id:'zapallo',cat:'Carbohidratos',name:'Zapallo',qty:'1 zapallo grande (aprox. 1.5 kg)'},
+
+  {id:'lechealmendras',cat:'Bebidas vegetales',name:'Leche de almendras sin azúcar',qty:'2 litros aprox.'},
+
+  {id:'manzana',cat:'Frutas',name:'Manzana',qty:'6 unidades'},
+  {id:'pera',cat:'Frutas',name:'Pera',qty:'3 unidades'},
+  {id:'mandarina',cat:'Frutas',name:'Mandarina',qty:'6 a 7 unidades'},
+  {id:'naranja',cat:'Frutas',name:'Naranja',qty:'3 unidades'},
+  {id:'platano',cat:'Frutas',name:'Plátano',qty:'4 unidades'},
+  {id:'fresas',cat:'Frutas',name:'Fresas o frutos rojos',qty:'1 a 2 cajas pequeñas (250 g c/u)'},
+
+  {id:'palta',cat:'Vegetales',name:'Palta',qty:'7 a 8 unidades'},
+  {id:'tomate',cat:'Vegetales',name:'Tomate',qty:'6 a 8 unidades'},
+  {id:'pepino',cat:'Vegetales',name:'Pepino',qty:'4 a 5 unidades'},
+  {id:'lechuga',cat:'Vegetales',name:'Lechuga',qty:'2 a 3 unidades'},
+  {id:'zanahoria',cat:'Vegetales',name:'Zanahoria',qty:'4 a 5 unidades'},
+  {id:'apio',cat:'Vegetales',name:'Apio',qty:'1 atado'},
+  {id:'espinaca',cat:'Vegetales',name:'Espinaca',qty:'1 a 2 paquetes (200-300 g)'},
+  {id:'champinones',cat:'Vegetales',name:'Champiñones',qty:'1 a 2 paquetes pequeños (200 g)'},
+  {id:'brocoli',cat:'Vegetales',name:'Brócoli',qty:'1 unidad mediana'},
+  {id:'vainitas',cat:'Vegetales',name:'Vainitas',qty:'1/4 kg'},
+  {id:'cebolla',cat:'Vegetales',name:'Cebolla',qty:'3 a 4 unidades'},
+  {id:'pimiento',cat:'Vegetales',name:'Pimiento',qty:'2 unidades'},
+  {id:'rabanito',cat:'Vegetales',name:'Rabanito',qty:'1 atado pequeño'},
+  {id:'choclo',cat:'Vegetales',name:'Choclo',qty:'2 unidades o 1 lata desgranado'},
+  {id:'culantro',cat:'Vegetales',name:'Culantro',qty:'1 atado'},
+  {id:'perejil',cat:'Vegetales',name:'Perejil',qty:'1 atado'},
+  {id:'limon',cat:'Vegetales',name:'Limón',qty:'5 a 6 unidades'},
+  {id:'zucchini',cat:'Vegetales',name:'Zucchini',qty:'2 a 3 unidades'},
+
+  {id:'chia',cat:'Otros',name:'Chía',qty:'1 bolsa de 200 g'},
+  {id:'almendras',cat:'Otros',name:'Almendras',qty:'1 bolsa pequeña (150-200 g)'},
+  {id:'nueces',cat:'Otros',name:'Nueces',qty:'1 bolsa pequeña (150-200 g)'},
+  {id:'hummus',cat:'Otros',name:'Hummus',qty:'1 a 2 envases (200 g c/u)'},
+  {id:'te',cat:'Otros',name:'Té verde',qty:'1 caja de filtrantes'},
+  {id:'manzanilla',cat:'Otros',name:'Manzanilla',qty:'1 caja de filtrantes'},
+  {id:'canela',cat:'Otros',name:'Canela en polvo',qty:'1 frasco'},
+  {id:'aceite',cat:'Otros',name:'Aceite de oliva',qty:'1 botella mediana'},
+];
+
+const daysData = [
+{desayuno:"Tortilla de 2 huevos con espinaca y champiñones + 1/2 palta",mediaManana:"1 manzana mediana",almuerzo:"Pechuga de pollo a la plancha (150 g) + ensalada de quinua con tomate, pepino y culantro + 1/2 camote sancochado",mediaTarde:"Puñado de almendras (10 unidades)",cena:"Crema de zapallo con pollo deshilachado y palta picada"},
+{desayuno:"Batido de plátano con leche de almendras sin azúcar, chía y canela",mediaManana:"Puñado de nueces (8-10 unidades)",almuerzo:"Pescado al horno (bonito o jurel, 150 g) + ensalada fresca de lechuga, rabanito y palta",mediaTarde:"1 mandarina",cena:"Ensalada de atún en agua con lechuga, tomate, pepino, choclo y palta"},
+{desayuno:"Pudín de chía con leche de almendras sin azúcar y frutos rojos (prepáralo la noche anterior)",mediaManana:"Palitos de zanahoria y pepino con 2 cucharadas de hummus",almuerzo:"Lentejas guisadas con verduras + ensalada de pepino y tomate",mediaTarde:"1 pera",cena:"Pollo a la plancha (120 g) con ensalada de hojas verdes, palta y limón"},
+{desayuno:"Huevos revueltos con tomate y cebolla + 1/2 palta",mediaManana:"1 huevo sancochado",almuerzo:"Pollo al jugo, bajo en grasa y sin piel + puré de zapallo + ensalada verde",mediaTarde:"1 naranja",cena:"Sopa de verduras (zapallo, zanahoria, apio, choclo) con trozos de pollo"},
+{desayuno:"Tortilla de claras con champiñones y zucchini",mediaManana:"Puñado de almendras (10 unidades)",almuerzo:"Atún a la plancha (150 g) + ensalada de garbanzos, tomate, cebolla y perejil",mediaTarde:"Palitos de apio con hummus",cena:"Pescado al vapor con vegetales al vapor (brócoli, zanahoria, vainitas)"},
+{desayuno:"Quinua cocida con leche de almendras sin azúcar, manzana picada y canela",mediaManana:"1 mandarina",almuerzo:"Pavita saltada con pimiento, cebolla y vainitas (poco aceite) + quinua (1/2 taza)",mediaTarde:"Puñado de nueces (8-10 unidades)",cena:"Ensalada de quinua con vegetales y huevo sancochado"},
+{desayuno:"Palta con huevo sancochado, tomate y un toque de limón",mediaManana:"Palitos de zanahoria y pepino con hummus",almuerzo:"Pescado a la plancha (150 g) + guiso de lentejas + ensalada",mediaTarde:"1 pera",cena:"Crema de espinaca con pollo deshilachado"},
+{desayuno:"Tortilla de 2 huevos con espinaca y tomate + 1/2 palta",mediaManana:"1 plátano pequeño",almuerzo:"Pechuga de pollo al horno (150 g) + ensalada de quinua y vegetales + camote sancochado",mediaTarde:"Puñado de almendras (10 unidades)",cena:"Sopa de pescado con vegetales"},
+{desayuno:"Batido de fresas con leche de almendras sin azúcar y chía",mediaManana:"Puñado de nueces (8-10 unidades)",almuerzo:"Pescado sudado, bajo en grasa + ensalada de vegetales",mediaTarde:"1 mandarina",cena:"Ensalada de pollo desmenuzado con vegetales y palta"},
+{desayuno:"Pudín de chía con leche de almendras sin azúcar y manzana picada",mediaManana:"Palitos de pepino y zanahoria con hummus",almuerzo:"Lentejas guisadas con verduras + ensalada de tomate y pepino",mediaTarde:"1 pera",cena:"Tortilla de claras con vegetales salteados"},
+{desayuno:"Huevos revueltos con espinaca + 1/2 palta",mediaManana:"1 huevo sancochado",almuerzo:"Pollo a la plancha + puré de zapallo + ensalada verde",mediaTarde:"1 naranja",cena:"Crema de zanahoria con pollo deshilachado"},
+{desayuno:"Quinua cocida con leche de almendras sin azúcar y canela",mediaManana:"1 mandarina",almuerzo:"Atún a la plancha con ensalada de garbanzos y vegetales",mediaTarde:"Puñado de nueces (8-10 unidades)",cena:"Pescado al vapor con vegetales al vapor"},
+{desayuno:"Tortilla de claras con champiñones y zucchini",mediaManana:"Puñado de almendras (10 unidades)",almuerzo:"Pavita saltada con verduras + quinua (1/2 taza)",mediaTarde:"1 mandarina",cena:"Ensalada de quinua con huevo sancochado y vegetales"},
+{desayuno:"Palta con huevo sancochado, tomate y limón",mediaManana:"Palitos de apio con hummus",almuerzo:"Pescado a la plancha + guiso de lentejas + ensalada",mediaTarde:"1 pera",cena:"Crema de zapallo con pollo deshilachado"},
+{desayuno:"Tortilla de 2 huevos con espinaca y champiñones + 1/2 palta",mediaManana:"1 manzana",almuerzo:"Pechuga de pollo al horno (150 g) + ensalada de quinua + camote sancochado",mediaTarde:"Puñado de almendras (10 unidades)",cena:"Sopa de verduras con pollo"},
+{desayuno:"Batido de plátano con leche de almendras sin azúcar y chía",mediaManana:"Puñado de nueces (8-10 unidades)",almuerzo:"Pescado al horno + ensalada de vegetales",mediaTarde:"1 mandarina",cena:"Ensalada de atún con vegetales y palta"},
+{desayuno:"Pudín de chía con leche de almendras sin azúcar y frutos rojos",mediaManana:"Palitos de zanahoria y pepino con hummus",almuerzo:"Lentejas guisadas con verduras + ensalada",mediaTarde:"1 pera",cena:"Pollo a la plancha con ensalada de hojas verdes y limón"},
+{desayuno:"Huevos revueltos con tomate y cebolla + 1/2 palta",mediaManana:"1 huevo sancochado",almuerzo:"Pollo al jugo + puré de zapallo + ensalada",mediaTarde:"1 naranja",cena:"Tortilla de claras con vegetales salteados"},
+{desayuno:"Tortilla de claras con champiñones y zucchini",mediaManana:"Puñado de almendras (10 unidades)",almuerzo:"Atún a la plancha + ensalada de garbanzos",mediaTarde:"Puñado de nueces (8-10 unidades)",cena:"Pescado al vapor con vegetales"},
+{desayuno:"Quinua cocida con leche de almendras sin azúcar y manzana picada",mediaManana:"1 mandarina",almuerzo:"Pavita saltada con verduras + quinua (1/2 taza)",mediaTarde:"1 mandarina",cena:"Ensalada de quinua con huevo sancochado y vegetales"},
+{desayuno:"Palta con huevo sancochado, tomate y un toque de limón",mediaManana:"Palitos de apio con hummus",almuerzo:"Pescado a la plancha + guiso de lentejas + ensalada",mediaTarde:"Infusión de manzanilla + puñado de nueces",cena:"Crema de zapallo con pollo deshilachado — ¡Felicidades por completar el plan!"},
+];
+
+
+let checked = {};
+let celebrationShown = false;
+let selectedDay = 1;
+
+function hasNativeStorage(){
+  return !!(window.storage && typeof window.storage.get === 'function');
+}
+
+async function loadState(){
+  if (hasNativeStorage()){
+    try{
+      const r = await window.storage.get(CHECK_KEY, false);
+      if (r && r.value) checked = JSON.parse(r.value);
+    }catch(e){ checked = {}; }
+    try{
+      const r2 = await window.storage.get(CELEB_KEY, false);
+      if (r2 && r2.value === '1') celebrationShown = true;
+    }catch(e){ celebrationShown = false; }
+  } else {
+    try{
+      const raw = localStorage.getItem(CHECK_KEY);
+      if (raw) checked = JSON.parse(raw);
+      celebrationShown = localStorage.getItem(CELEB_KEY) === '1';
+    }catch(e){ checked = {}; celebrationShown = false; }
+  }
+}
+
+async function saveChecked(){
+  if (hasNativeStorage()){
+    try{ await window.storage.set(CHECK_KEY, JSON.stringify(checked), false); }catch(e){ console.error(e); }
+  } else {
+    try{ localStorage.setItem(CHECK_KEY, JSON.stringify(checked)); }catch(e){ console.error(e); }
+  }
+}
+
+async function saveCelebration(){
+  if (hasNativeStorage()){
+    try{ await window.storage.set(CELEB_KEY, '1', false); }catch(e){ console.error(e); }
+  } else {
+    try{ localStorage.setItem(CELEB_KEY, '1'); }catch(e){ console.error(e); }
+  }
+}
+
+function buildItemRow(item){
+  const row = document.createElement('div');
+  row.className = 'item-row' + (checked[item.id] ? ' is-done' : '');
+  row.dataset.id = item.id;
+  row.innerHTML =
+    '<span class="item-name">' + item.name + '</span>' +
+    '<span class="item-leader"></span>' +
+    '<span class="item-qty">' + item.qty + '</span>' +
+    '<button class="stamp-btn' + (checked[item.id] ? ' is-done' : '') + '" type="button" ' +
+    'aria-pressed="' + (!!checked[item.id]) + '" aria-label="Marcar ' + item.name + ' como comprado">' +
+    '<span class="mark">✓</span></button>';
+  return row;
+}
+
+function renderReceiptBody(){
+  const container = document.getElementById('receipt-body');
+  container.innerHTML = '';
+  const cats = [];
+  ingredientsData.forEach(i => { if (!cats.includes(i.cat)) cats.push(i.cat); });
+  cats.forEach(cat => {
+    const block = document.createElement('div');
+    block.className = 'cat-block';
+    const label = document.createElement('div');
+    label.className = 'cat-label';
+    label.textContent = cat;
+    block.appendChild(label);
+    ingredientsData.filter(i => i.cat === cat).forEach(item => {
+      block.appendChild(buildItemRow(item));
+    });
+    container.appendChild(block);
+  });
+}
+
+function toggleItem(id, row, btn){
+  checked[id] = !checked[id];
+  row.classList.toggle('is-done', checked[id]);
+  btn.classList.toggle('is-done', checked[id]);
+  btn.setAttribute('aria-pressed', String(checked[id]));
+  if (checked[id] && !prefersReducedMotion){
+    btn.classList.remove('pop');
+    requestAnimationFrame(() => btn.classList.add('pop'));
+  }
+  saveChecked();
+  updateProgress();
+}
+
+function totalCount(){ return ingredientsData.length; }
+function doneCount(){ return ingredientsData.filter(i => checked[i.id]).length; }
+
+function updateProgress(){
+  const total = totalCount();
+  const done = doneCount();
+  document.getElementById('progress-text').textContent = done + ' / ' + total;
+  const pct = Math.round((done/total)*100);
+  document.getElementById('barcode-fill').style.width = pct + '%';
+  updatePlanLockUI(done, total);
+}
+
+function updatePlanLockUI(done, total){
+  if (done === undefined) done = doneCount();
+  if (total === undefined) total = totalCount();
+  const remaining = total - done;
+  const pct = Math.round((done/total)*100);
+  document.getElementById('mini-fill').style.width = pct + '%';
+  document.getElementById('locked-count').textContent = remaining;
+  const lockedEl = document.getElementById('plan-locked');
+  const unlockedEl = document.getElementById('plan-unlocked');
+  if (remaining <= 0){
+    lockedEl.hidden = true;
+    unlockedEl.hidden = false;
+    maybeShowCelebration();
+  } else {
+    lockedEl.hidden = false;
+    unlockedEl.hidden = true;
+  }
+}
+
+function maybeShowCelebration(){
+  if (celebrationShown) return;
+  celebrationShown = true;
+  saveCelebration();
+  if (prefersReducedMotion) return;
+  const el = document.getElementById('celebration');
+  el.hidden = false;
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => {
+    el.classList.remove('show');
+    el.classList.add('hide');
+    setTimeout(() => { el.hidden = true; el.classList.remove('hide'); }, 500);
+  }, 1800);
+}
+
+function renderWeeks(){
+  const wrap = document.getElementById('weeks');
+  wrap.innerHTML = '';
+  for (let w = 0; w < 3; w++){
+    const block = document.createElement('div');
+    block.className = 'week-block';
+    const label = document.createElement('div');
+    label.className = 'week-label';
+    label.textContent = 'Semana ' + (w+1);
+    block.appendChild(label);
+    const row = document.createElement('div');
+    row.className = 'day-chip-row';
+    for (let d = w*7+1; d <= w*7+7; d++){
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'day-chip' + (d === selectedDay ? ' active' : '');
+      chip.textContent = String(d);
+      chip.dataset.day = String(d);
+      chip.setAttribute('aria-label', 'Día ' + d);
+      row.appendChild(chip);
+    }
+    block.appendChild(row);
+    wrap.appendChild(block);
+  }
+}
+
+function renderDayCard(){
+  const data = daysData[selectedDay - 1];
+  document.getElementById('day-num').textContent = 'DÍA ' + selectedDay;
+  document.getElementById('day-week').textContent = 'SEMANA ' + Math.ceil(selectedDay/7);
+  const rows = [
+    ['Desayuno', data.desayuno],
+    ['Media mañana', data.mediaManana],
+    ['Almuerzo', data.almuerzo],
+    ['Media tarde', data.mediaTarde],
+    ['Cena', data.cena],
+  ];
+  document.getElementById('meal-rows').innerHTML = rows.map(function(pair){
+    return '<div class="meal-row"><div class="meal-label">' + pair[0] + '</div>' +
+           '<div class="meal-text">' + pair[1] + '</div></div>';
+  }).join('');
+  document.getElementById('prev-day').disabled = selectedDay <= 1;
+  document.getElementById('next-day').disabled = selectedDay >= 21;
+}
+
+function goToTab(name){
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
+  if (name === 'plan') updatePlanLockUI();
+}
+
+document.getElementById('receipt-body').addEventListener('click', function(e){
+  const btn = e.target.closest('.stamp-btn');
+  if (!btn) return;
+  const row = btn.closest('.item-row');
+  toggleItem(row.dataset.id, row, btn);
+});
+
+document.querySelectorAll('.tab-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){ goToTab(btn.dataset.tab); });
+});
+document.getElementById('go-to-plan').addEventListener('click', function(){ goToTab('plan'); });
+document.getElementById('back-to-list').addEventListener('click', function(){ goToTab('lista'); });
+
+document.getElementById('weeks').addEventListener('click', function(e){
+  const chip = e.target.closest('.day-chip');
+  if (!chip) return;
+  selectedDay = Number(chip.dataset.day);
+  renderWeeks();
+  renderDayCard();
+});
+document.getElementById('prev-day').addEventListener('click', function(){
+  if (selectedDay > 1){ selectedDay--; renderWeeks(); renderDayCard(); }
+});
+document.getElementById('next-day').addEventListener('click', function(){
+  if (selectedDay < 21){ selectedDay++; renderWeeks(); renderDayCard(); }
+});
+
+let resetArmed = false, resetTimer = null;
+const resetBtn = document.getElementById('reset-btn');
+resetBtn.addEventListener('click', function(){
+  if (!resetArmed){
+    resetArmed = true;
+    resetBtn.textContent = '¿Seguro? Toca de nuevo para reiniciar';
+    resetTimer = setTimeout(function(){ resetArmed = false; resetBtn.textContent = 'Reiniciar lista'; }, 4000);
+  } else {
+    clearTimeout(resetTimer);
+    checked = {};
+    saveChecked();
+    renderReceiptBody();
+    updateProgress();
+    resetArmed = false;
+    resetBtn.textContent = 'Reiniciar lista';
+  }
+});
+
+async function init(){
+  await loadState();
+  renderReceiptBody();
+  renderWeeks();
+  renderDayCard();
+  updateProgress();
+}
+init();
+</script>
+</body>
+</html>
